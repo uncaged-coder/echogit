@@ -64,7 +64,6 @@ class LXCProject:
 
     def updateLXC(self, project_name):
         global_containers = self.config.get_list('LXC', 'containers', fallback=[])
-        print(global_containers)
 
         project_path = os.path.join(self.data_path, project_name)
         if os.path.isdir(project_path):

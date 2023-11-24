@@ -17,31 +17,38 @@ class Projects(LXCProject):
         self.data_path = config.data_path
         self.git_path = config.git_path
 
-    def list_projects(self):
+    def _walk_git_projects(self, path, callback, parent_path=""):
         """
-        List all projects. If a directory is not a git repo,
-        explore its subdirectories for git projects. Do not process subfolders
-        if the main folder is a git project.
-        """
-        print("Projects:")
-        self._list_git_projects(self.data_path)
-
-
-    def _list_git_projects(self, path, parent_path=""):
-        """
-        Recursively list git projects in a given path.
+        Recursively walk through git projects in a given path and apply a callback.
 
         @param path: Path to search for git projects.
+        @param callback: A function to call for each git project found.
         @param parent_path: Path of the parent directory for relative path construction.
         """
         for item in os.listdir(path):
             full_path = os.path.join(path, item)
             if os.path.isdir(full_path):
                 if self._is_echogit_repository(full_path):
-                    print(os.path.join(parent_path, item))
+                    callback(os.path.join(parent_path, item))
                 else:
                     # Continue searching in subdirectories
-                    self._list_git_projects(full_path, parent_path=item)
+                    self._walk_git_projects(full_path, callback, parent_path=item)
+
+    def list_projects(self):
+        """
+        List all projects. If a directory is not a git repo,
+        explore its subdirectories for git projects.
+        """
+        print("Projects:")
+        self._walk_git_projects(self.data_path, self._print_project)
+
+    def _print_project(self, project_name):
+        """
+        Print the project name.
+
+        @param project_name: Name of the project.
+        """
+        print(project_name)
 
     def _is_git_repository(self, path):
         """
@@ -75,15 +82,11 @@ class Projects(LXCProject):
         current_path = path
         while current_path and current_path != self.data_path:
             parent_path = os.path.dirname(current_path)
-            print(f"process path '{current_path}' with parent='{parent_path}' proj='{self.data_path}'")
             if current_path == self.data_path.rstrip('/'):
-                print(f"is data path '{self.data_path}'")
                 return True
             elif parent_path == current_path:  # Reached the root directory
-                print("root")
                 return False
             elif self._is_echogit_repository(current_path):
-                print("is echogit repo")
                 return False
             current_path = parent_path
         return False
@@ -96,7 +99,7 @@ class Projects(LXCProject):
         @param use_lfs: Boolean indicating whether to use Git LFS for this project.
         @param additional_repo: Tuple (remote_name, remote_url) for an additional git repository.
         """
-        git_repo_path = os.path.join(self.git_path, f"{project_name}.git")
+        git_repo_path = os.path.join(self.git_path.rstrip('/'), f"{project_name}.git")
         data_repo_path = os.path.join(self.data_path, project_name)
 
         if os.path.exists(data_repo_path):
@@ -170,6 +173,12 @@ class Projects(LXCProject):
         # if using LXC, update path sharing if needed
         self.updateLXC(project_name)
 
+    def sync_projects(self):
+        """
+        Sync all projects.
+        """
+        self._walk_git_projects(self.data_path, self.sync_project)
+
     def _initialize_git_lfs(self, project_path):
         """
         Initialize Git LFS for a project.
@@ -223,7 +232,11 @@ class Projects(LXCProject):
         elif command == "add" and project_name:
             self.add_project(project_name, use_lfs, additional_repo)
         elif command == "sync" and project_name:
+            print("sync pn cmd")
             self.sync_project(project_name)
+        elif command == "sync":
+            print("sync cmd")
+            self.sync_projects(project_name)
         else:
             print("Invalid command or missing project name.")
 

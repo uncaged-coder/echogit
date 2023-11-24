@@ -39,7 +39,10 @@ def handle_config_command(config):
     print(f"Git Path: {config.git_path}")
 
 def handle_sync_command():
+    config = Config()
+    projects = Projects(config)
     print("Sync...")
+    projects.sync_projects()
 
 def handle_peers_command(peers, argv):
     command, peer_name, priority = Peers.parse_peer_arguments(argv)
