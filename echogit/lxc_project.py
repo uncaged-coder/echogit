@@ -66,11 +66,12 @@ class LXCProject:
         global_containers = self.config.get_list('LXC', 'containers', fallback=[])
 
         project_path = os.path.join(self.data_path, project_name)
+        git_path = os.path.join(self.git_path, project_name) + '.git'
         if os.path.isdir(project_path):
             project_config = ProjectConfig(project_path)
-            self._update_containers_for_project(project_path, project_config, global_containers)
+            self._update_containers_for_project(project_path, git_path, project_config, global_containers)
 
-    def _update_containers_for_project(self, project_path, project_config, global_containers):
+    def _update_containers_for_project(self, project_path, git_path, project_config, global_containers):
         """
         Add or remove project path from LXC containers based on project configuration.
 
@@ -83,6 +84,7 @@ class LXCProject:
         for container in project_containers:
             if container in global_containers:
                 self._add_project_to_container(container, project_path)
+                self._add_project_to_container(container, git_path)
             else:
                 print(f"Container '{container}' is not listed in global configuration and will be ignored.")
 
@@ -90,3 +92,4 @@ class LXCProject:
         for container in global_containers:
             if container not in project_containers:
                 self._remove_project_from_container(container, project_path)
+                self._remove_project_from_container(container, git_path)

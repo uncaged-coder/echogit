@@ -3,74 +3,45 @@ import sys
 import subprocess
 import configparser
 from config import Config
+from project import Project
 from lxc_project import LXCProject
 
 class Projects(LXCProject):
-    def __init__(self, config):
-        """
-        Initialize the Projects class with the configuration.
-
-        @param config: An instance of the Config class with loaded configuration.
-        """
+    def __init__(self, config, peers):
         super().__init__(config)
         self.config = config
+        self.peers = peers
         self.data_path = config.data_path
         self.git_path = config.git_path
+        self.tree = self._build_tree(self.data_path)
 
-    def _walk_git_projects(self, path, callback, parent_path=""):
-        """
-        Recursively walk through git projects in a given path and apply a callback.
-
-        @param path: Path to search for git projects.
-        @param callback: A function to call for each git project found.
-        @param parent_path: Path of the parent directory for relative path construction.
-        """
+    def _build_tree(self, path):
+        root = Project(path)
         for item in os.listdir(path):
             full_path = os.path.join(path, item)
             if os.path.isdir(full_path):
                 if self._is_echogit_repository(full_path):
-                    callback(os.path.join(parent_path, item))
+                    child = Project(full_path, is_echogit=True)
+                    root.add_child(child)
                 else:
-                    # Continue searching in subdirectories
-                    self._walk_git_projects(full_path, callback, parent_path=item)
-
-    def list_projects(self):
-        """
-        List all projects. If a directory is not a git repo,
-        explore its subdirectories for git projects.
-        """
-        print("Projects:")
-        self._walk_git_projects(self.data_path, self._print_project)
-
-    def _print_project(self, project_name):
-        """
-        Print the project name.
-
-        @param project_name: Name of the project.
-        """
-        print(project_name)
+                    child = self._build_tree(full_path)
+                    if child.is_echogit or any(grandchild.is_echogit for grandchild in child.children):
+                        root.add_child(child)
+                        root.has_echogit_child = True
+        return root
 
     def _is_git_repository(self, path):
-        """
-        Check if a given path is a git repository.
-
-        @param path: Path to check.
-        @return: True if the path is a git repository, False otherwise.
-        """
-        git_dir = os.path.join(path, ".git")
-        return os.path.exists(git_dir)
+        return os.path.exists(os.path.join(path, ".git"))
 
     def _is_echogit_repository(self, path):
-        """
-        Check if a given path is an echogit repository.
-
-        @param path: Path to check.
-        @return: True if the path is an echogit repository, False otherwise.
-        """
         if not self._is_git_repository(path):
             return False
-        echogit_dir = os.path.join(path, ".echogit")
-        return os.path.exists(echogit_dir)
+        return os.path.exists(os.path.join(path, ".echogit"))
+
+    def _initialize_git_lfs(self, project_path):
+        subprocess.run(["git", "lfs", "install"], cwd=project_path)
+        subprocess.run(["git", "lfs", "track", "*"], cwd=project_path)
+        print(f"Git LFS initialized for project at '{project_path}'.")
 
     def _can_create_echogit_repository(self, path):
         """
@@ -92,13 +63,6 @@ class Projects(LXCProject):
         return False
 
     def add_project(self, project_name, use_lfs=False, additional_repo=None):
-        """
-        Add a new project.
-
-        @param project_name: Name of the project to add.
-        @param use_lfs: Boolean indicating whether to use Git LFS for this project.
-        @param additional_repo: Tuple (remote_name, remote_url) for an additional git repository.
-        """
         git_repo_path = os.path.join(self.git_path.rstrip('/'), f"{project_name}.git")
         data_repo_path = os.path.join(self.data_path, project_name)
 
@@ -110,10 +74,9 @@ class Projects(LXCProject):
             print(f"Cannot create project here: '{data_repo_path}'.")
             return
 
-        # Check if the git repo already exists
         if os.path.exists(git_repo_path):
             user_input = input(f"Git repository '{git_repo_path}' already exists. Use it? [Y/n] ").strip().lower()
-            if user_input != 'y' and user_input != '':
+            if user_input not in ['y', '']:
                 print("Operation cancelled.")
                 return
         else:
@@ -131,7 +94,6 @@ class Projects(LXCProject):
             remote_name, remote_url = additional_repo
             subprocess.run(["git", "remote", "add", remote_name, remote_url], cwd=data_repo_path)
 
-        # Create .echogit folder and config.ini file
         echogit_path = os.path.join(data_repo_path, ".echogit")
         os.makedirs(echogit_path, exist_ok=True)
         self._create_echogit_config(echogit_path)
@@ -139,73 +101,25 @@ class Projects(LXCProject):
         print(f"Project '{project_name}' added.")
 
     def _create_echogit_config(self, echogit_path):
-        """
-        Create the config.ini file in the .echogit folder.
-
-        @param echogit_path: Path to the .echogit folder.
-        """
         config = configparser.ConfigParser()
         config['BRANCHES'] = {
-            'sync_branches': ['master, dev, echogit-master, echogit-dev'],
+            'sync_branches': 'master, dev, echogit-master, echogit-dev',
             'upstream': 'upstream'
         }
-
-        config_path = os.path.join(echogit_path, 'config.ini')
-        with open(config_path, 'w') as configfile:
+        config['LXC'] = {
+            'containers': ''
+        }
+        with open(os.path.join(echogit_path, 'config.ini'), 'w') as configfile:
             config.write(configfile)
 
-    def sync_project(self, project_name):
-        """
-        Sync a project.
-
-        @param project_name: Name of the project to sync.
-        """
-        project_path = os.path.join(self.data_path, project_name)
-        if not os.path.exists(project_path):
-            print(f"Project '{project_name}' does not exist.")
-            return
-
-        # Sync logic here. Placeholder for actual sync functionality.
-        print(
-            f"Syncing project '{project_name}' ... [Placeholder]"
-        )
-
-        # if using LXC, update path sharing if needed
-        self.updateLXC(project_name)
-
-    def sync_projects(self):
-        """
-        Sync all projects.
-        """
-        self._walk_git_projects(self.data_path, self.sync_project)
-
-    def _initialize_git_lfs(self, project_path):
-        """
-        Initialize Git LFS for a project.
-
-        @param project_path: Path to the project.
-        """
-        subprocess.run(["git", "lfs", "install"], cwd=project_path)
-        subprocess.run(["git", "lfs", "track", "*"], cwd=project_path)
-        print(f"Git LFS initialized for project at '{project_path}'.")
-
-    def _parse_containers_from_config(self, containers_string):
-        """
-        Parse the containers string from config.
-
-        @param containers_string: The containers string in the config.
-        @return: List of container names.
-        """
-        return [container.strip() for container in containers_string.strip('[]').split(',') if container]
+    def sync_projects(self, verbose=True):
+        self.tree.sync(self, self.peers)
+        if verbose:
+            self.tree.print_status()
+        return self.tree
 
     @staticmethod
     def parse_project_arguments(argv):
-        """
-        Parse the command line arguments for project commands.
-
-        @param argv: List of command line arguments.
-        @return: Tuple containing command, project_name, use_lfs, and additional_repo.
-        """
         command = argv[1] if len(argv) > 1 else None
         project_name = argv[2] if len(argv) > 2 else None
         use_lfs = "-o" in argv and "lfs" in argv
@@ -219,31 +133,22 @@ class Projects(LXCProject):
         return command, project_name, use_lfs, additional_repo
 
     def execute_command(self, command, project_name, use_lfs=False, additional_repo=None):
-        """
-        Execute a given command on the project.
-
-        @param command: The command to execute.
-        @param project_name: The name of the project.
-        @param use_lfs: Boolean indicating whether to use Git LFS.
-        @param additional_repo: Additional repository details (tuple of remote name and URL).
-        """
         if command == "list":
-            self.list_projects()
+            self.tree.print_status()
         elif command == "add" and project_name:
             self.add_project(project_name, use_lfs, additional_repo)
         elif command == "sync" and project_name:
-            print("sync pn cmd")
-            self.sync_project(project_name)
+            self.sync_echogit_project(project_name, self.peers)
         elif command == "sync":
-            print("sync cmd")
-            self.sync_projects(project_name)
+            self.sync_projects()
         else:
             print("Invalid command or missing project name.")
 
 
 if __name__ == "__main__":
     config = Config()
-    projects = Projects(config)
+    peers = Peers(config)
 
+    projects = Projects(config, peers)
     command, project_name, use_lfs, additional_repo = Projects.parse_project_arguments(sys.argv)
     projects.execute_command(command, project_name, use_lfs, additional_repo)

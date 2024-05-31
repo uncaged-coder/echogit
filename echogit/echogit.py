@@ -9,7 +9,8 @@ def main():
         return
 
     config = Config()
-    projects = Projects(config)
+    peers = Peers(config)
+    projects = Projects(config, peers)
 
     command = sys.argv[1]
 
@@ -20,8 +21,7 @@ def main():
     elif command == "sync":
         handle_sync_command()
     elif command == "peers":
-        peers_instance = Peers(config)
-        handle_peers_command(peers_instance, sys.argv[1:])
+        handle_peers_command(peers, sys.argv[1:])
     else:
         print(f"Unknown command: {command}")
         print_usage()
@@ -40,7 +40,8 @@ def handle_config_command(config):
 
 def handle_sync_command():
     config = Config()
-    projects = Projects(config)
+    peers = Peers(config)
+    projects = Projects(config, peers)
     print("Sync...")
     projects.sync_projects()
 
