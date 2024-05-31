@@ -7,6 +7,7 @@ class ProjectConfig(BaseConfig):
         super().__init__(config_file)
         self.project_path = project_path
         self.sync_branches = self.get_list('BRANCHES', 'sync_branches', fallback=[])
+        self.sync_remotes = self.get_list('BRANCHES', 'sync_remotes', fallback=[])
         self.upstream = self.config.get('BRANCHES', 'upstream', fallback='upstream')
         self.lxc_containers = self.get_list('LXC', 'containers', fallback=[])
 

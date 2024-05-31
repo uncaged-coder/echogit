@@ -3,14 +3,14 @@ import configparser
 from base_config import BaseConfig
 
 class Config(BaseConfig):
-    def __init__(self, config_path=None):
+    def __init__(self):
         """
         Initialize the configuration.
 
         @param config_path: Optional path to the configuration file. If not provided,
                             it defaults to ~/.config/echogit/config.
         """
-        self.config_file = config_path if config_path else os.path.expanduser('~/.config/echogit/config.ini')
+        self.config_file = os.path.expanduser('~/.config/echogit/config.ini')
         super().__init__(self.config_file)
         self.config = configparser.ConfigParser()
         self.read_config()
