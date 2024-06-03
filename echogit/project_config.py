@@ -2,10 +2,14 @@ import os
 from base_config import BaseConfig
 
 class ProjectConfig(BaseConfig):
+    SYNC_TYPE_GIT = 'git'
+    SYNC_TYPE_RSYNC = 'rsync'
+
     def __init__(self, project_path):
         config_file = os.path.join(project_path, '.echogit', 'config.ini')
         super().__init__(config_file)
         self.project_path = project_path
+        self.sync_type = self.config.get('ECHOGIT', 'sync_type', fallback=ProjectConfig.SYNC_TYPE_GIT)
         self.sync_branches = self.get_list('BRANCHES', 'sync_branches', fallback=[])
         self.sync_remotes = self.get_list('BRANCHES', 'sync_remotes', fallback=[])
         self.upstream = self.config.get('BRANCHES', 'upstream', fallback='upstream')

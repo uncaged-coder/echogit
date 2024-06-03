@@ -16,12 +16,14 @@ class Projects(LXCProject):
         self.tree = self._build_tree(self.data_path)
 
     def _build_tree(self, path):
-        root = Project(path)
+        project_path = path[len(self.config.data_path):]
+        root = Project(path, project_path)
         for item in os.listdir(path):
             full_path = os.path.join(path, item)
+            project_path = full_path[len(self.config.data_path):]
             if os.path.isdir(full_path):
                 if self._is_echogit_repository(full_path):
-                    child = Project(full_path, is_echogit=True)
+                    child = Project(full_path, project_path, is_echogit=True)
                     root.add_child(child)
                 else:
                     child = self._build_tree(full_path)
@@ -34,8 +36,6 @@ class Projects(LXCProject):
         return os.path.exists(os.path.join(path, ".git"))
 
     def _is_echogit_repository(self, path):
-        if not self._is_git_repository(path):
-            return False
         return os.path.exists(os.path.join(path, ".echogit"))
 
     def _initialize_git_lfs(self, project_path):

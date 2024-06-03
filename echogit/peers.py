@@ -5,11 +5,12 @@ from config import Config
 
 
 class Peer:
-    def __init__(self, name, priority, ip, git_path, description):
+    def __init__(self, name, priority, ip, git_path, rsync_path, description):
         self.name = name
         self.priority = priority
         self.ip = ip
         self.git_path = git_path
+        self.rsync_path = rsync_path
         self.description = description
 
 
@@ -51,6 +52,7 @@ class Peers:
                     priority = int(self.config[section]['priority']),
                     ip = self.config[section]['ip'],
                     git_path = self.config[section]['git_path'],
+                    rsync_path = self.config[section]['rsync_path'],
                     description = self.config[section]['description']
                 )
             else:
@@ -63,7 +65,7 @@ class Peers:
         @param section: The section name in the configuration file.
         @return: True if the configuration is valid, False otherwise.
         """
-        required_fields = ['priority', 'ip', 'git_path', 'description']
+        required_fields = ['priority', 'ip', 'git_path', 'rsync_path', 'description']
         return all(field in self.config[section] for field in required_fields)
 
     def list_peers(self):
