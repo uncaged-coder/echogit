@@ -25,6 +25,8 @@ class Config(BaseConfig):
         self.config.read(self.config_file)
         self.data_path = self.config.get('DEFAULT', 'data_path', fallback='~/data/')
         self.git_path = self.config.get('DEFAULT', 'git_path', fallback='~/git/')
+        self.collapse_folders = self.config.get('DEFAULT', 'collapse_folders', fallback='').split(',')
+        self.collapse_folders = [folder.strip() for folder in self.collapse_folders if folder.strip()]
 
         # Expand user home directory symbol (~)
         self.data_path = os.path.expanduser(self.data_path)
@@ -34,3 +36,4 @@ if __name__ == "__main__":
     config = Config()
     print(f"Data Path: {config.data_path}")
     print(f"Git Path: {config.git_path}")
+    print(f"collapse folders: {config.collapse_folders}")

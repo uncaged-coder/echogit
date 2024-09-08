@@ -8,17 +8,22 @@ class ProjectWidget(urwid.WidgetWrap):
     FOLDER_CLOSED_ICON = "📁"
     FOLDER_OPEN_ICON = "📂"
 
-    def __init__(self, node, list_walker, depth):
+    def __init__(self, node, list_walker, depth=0, collapse_folder=False):
         self.project_name = node.get_name()
         self.is_folder = node.is_folder
-        self.is_expanded = True
+        self.collapse_folder = collapse_folder
         self.list_walker = list_walker
         self.children_widgets = []
         self.status_details = node.get_status()
         self.depth = depth
         self.logs = node.get_logs()
 
-        self.icon = self.FOLDER_OPEN_ICON if self.is_folder else self.FILE_ICON
+        if self.collapse_folder:
+            folder_icon = self.FOLDER_CLOSED_ICON
+        else:
+            folder_icon = self.FOLDER_OPEN_ICON
+
+        self.icon = folder_icon if self.is_folder else self.FILE_ICON
         self.header = urwid.Text(self._get_header_text())
         self.status = urwid.Text(self.status_details, wrap='clip')
         status_attr = 'error' if node.has_error() else 'normal'
@@ -41,14 +46,14 @@ class ProjectWidget(urwid.WidgetWrap):
         return True
 
     def collapse_widget(self, widget):
-        widget.is_expanded = False
+        widget.collapse_folder = True
         if widget.is_folder:
             widget.icon = self.FOLDER_CLOSED_ICON
         widget.update_display()
         for child in widget.children_widgets:
             if child.item.original_widget in widget.list_walker:
                 widget.list_walker.remove(child.item.original_widget)
-            if child.item.original_widget.is_folder == True:
+            if child.item.original_widget.is_folder:
                 self.collapse_widget(child.item.original_widget)
 
     def toggle_expand(self):
@@ -57,9 +62,9 @@ class ProjectWidget(urwid.WidgetWrap):
             print(f"Error: Widget '{self.project_name}' id={id(self.item)} not found in the list!")
             return
 
-        self.is_expanded = not self.is_expanded
+        self.collapse_folder = not self.collapse_folder
 
-        if self.is_expanded:
+        if not self.collapse_folder:
             if self.is_folder:
                 self.icon = self.FOLDER_OPEN_ICON
             index = self.list_walker.index(my_widget)
@@ -109,7 +114,7 @@ class ProjectWidget(urwid.WidgetWrap):
         main_loop.widget = log_overlay
         main_loop.unhandled_input = exit_logs
 
-def build_ui_project(node, list_walker, parent_widget=None, depth=0):
+def build_ui_project(node, list_walker, collapse_folders, parent_widget=None, depth=0):
     """
     Recursively build the UI for each project or folder node.
 
@@ -117,20 +122,31 @@ def build_ui_project(node, list_walker, parent_widget=None, depth=0):
     :param list_walker: The list walker to which the UI elements are appended.
     :param parent_widget: The parent ProjectWidget if this is a subproject.
     """
-    widget = ProjectWidget(node, list_walker, depth)
+    collapse = any(
+        node.full_local_path.startswith(f"{folder}")
+        for folder in collapse_folders
+    )
+
+    widget = ProjectWidget(node, list_walker, depth, collapse)
     list_walker.append(widget)
+
     if parent_widget:
         parent_widget.add_child(widget)
+
     if node.is_folder:
         for project in node.children:
-            build_ui_project(project, list_walker, parent_widget=widget, depth=depth+1)
+            build_ui_project(project, list_walker, collapse_folders , parent_widget=widget, depth=depth+1)
 
-def build_ui(root):
+    # Collapse only after all children are added
+    if collapse:
+        widget.collapse_widget(widget)
+
+def build_ui(root, collapse_folders):
     """
     Construct the UI for the application using the root folder containing all projects.
     """
     list_walker = urwid.SimpleFocusListWalker([])
-    build_ui_project(root, list_walker)
+    build_ui_project(root, list_walker, collapse_folders)
     return urwid.ListBox(list_walker)
 
 def main():
@@ -148,7 +164,7 @@ def main():
         ('hidden', 'black', 'black'),
     ]
 
-    listbox = build_ui(root)
+    listbox = build_ui(root, config.collapse_folders)
     main_loop = urwid.MainLoop(listbox, palette)
     main_loop.run()
 
