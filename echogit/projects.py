@@ -25,11 +25,18 @@ class Projects(LXCProject):
                 if self._is_echogit_repository(full_path):
                     child = Project(full_path, project_path, is_echogit=True)
                     root.add_child(child)
+                elif self._is_git_repository(full_path):
+                    child = Project(full_path, project_path, is_git=True)
+                    root.missing_echogit_error = True
+                    root.add_child(child)
                 else:
                     child = self._build_tree(full_path)
                     if child.is_echogit or any(grandchild.is_echogit for grandchild in child.children):
                         root.add_child(child)
                         root.has_echogit_child = True
+                    elif child.is_git or any(grandchild.is_git for grandchild in child.children):
+                        root.missing_echogit_error = True
+                        root.add_child(child)
         return root
 
     def _is_git_repository(self, path):

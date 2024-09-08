@@ -2,17 +2,20 @@ import os
 import subprocess
 from project_config import ProjectConfig
 
+
 class Project:
-    def __init__(self, full_local_path, project_path, is_echogit=False):
+    def __init__(self, full_local_path, project_path, is_echogit=False, is_git=False):
         self.full_local_path = full_local_path
         self.project_path = project_path
         self.is_echogit = is_echogit
-        self.is_folder = os.path.isdir(full_local_path) and not is_echogit
+        self.is_git = is_git
+        self.is_folder = os.path.isdir(full_local_path) and not is_echogit and not is_git
         self.has_echogit_child = False
         self.children = []
         self.dirty = False
         self.push_error = False
         self.pull_error = False
+        self.missing_echogit_error = False
         self.sync_results = {}
         self._logs = ""
 
@@ -26,7 +29,7 @@ class Project:
         return os.path.basename(self.full_local_path)
 
     def has_error(self):
-        return self.push_error or self.pull_error
+        return self.push_error or self.pull_error or self.missing_echogit_error
 
     def get_status(self):
         status_parts = []
@@ -39,6 +42,8 @@ class Project:
                 status_parts.append("PUSH")
             if self.pull_error:
                 status_parts.append("PULL")
+            if self.missing_echogit_error:
+                status_parts.append("EGIT_MISS")
         return f"[{','.join(status_parts)}]"
 
     def _add_logs_header(self, project_name, project_path, branch, peer):
@@ -176,6 +181,8 @@ class Project:
                 self.push_error = results.get('push_error', True)
                 self.pull_error = results.get('pull_error', True)
                 self.sync_results = results.get('results', {})
+        elif self.is_git:
+            self.missing_echogit_error = True
         for child in self.children:
             child.sync(projects, peers)
             self.dirty |= child.dirty
@@ -187,6 +194,7 @@ class Project:
         print(f"{indent}{self.get_name()} - Status: {status_msg}, Dirty: {self.dirty}")
         if self.has_error() and self.is_echogit:
             for remote, branches in self.sync_results.items():
+                print(f"remote={remote} branches={branches}")
                 for branch, result in branches.items():
                     print(f"{indent}  {remote}/{branch} - Push: {result['push']['output']}, Pull: {result['pull']['output']}")
         for child in self.children:
