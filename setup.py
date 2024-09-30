@@ -16,7 +16,7 @@ setup(
         # 'requests',
     ],
     classifiers=[
-        'Development Status :: 3 - Alpha',  # Update as per your project's maturity
+        'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'Natural Language :: English',
         'Programming Language :: Python :: 3',
@@ -25,8 +25,8 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'echogit=echogit.__main__:main',  # Adjust if you have a different entry point
+            'echogit=echogit.__main__:main',
         ],
     },
-    python_requires='>=3.6',  # Specify the minimum Python version required
+    python_requires='>=3.6',
 )
