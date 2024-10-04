@@ -29,6 +29,8 @@ class Config(BaseConfig):
         self.projects_path = self._ensure_trailing_slash(self.projects_path)
         self.echogit_bin = self.config.get(
             'DEFAULT', 'echogit_bin', fallback=None)
+        self.ignore_peers_down = self.config.getboolean(
+            'DEFAULT', 'ignore_peers_down', fallback=False)
 
         # list of folder that are collapsed at startup. Needed on UI for example.
         # collapsed folder contains projects we are not interested in.
@@ -97,6 +99,11 @@ class Config(BaseConfig):
             peer.load_from_string(peer_data)
             peers[peer.name] = peer
         return peers
+
+    def print(self):
+        print(f"Data Path: {self.projects_path}")
+        print(f"Ignore peers down: {self.ignore_peers_down}")
+        print(f"Git Path: {self.git_path}")
 
 
 if __name__ == "__main__":

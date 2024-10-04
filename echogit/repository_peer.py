@@ -20,11 +20,12 @@ class RepositoryPeer(Node):
             child.scan()
             self.add_child(child)
 
-    def sync(self, verbose=False, ignore_peer_down=False):
+    def sync(self, verbose=False):
         if self.peer.config is None and self.peer.is_down == False:
             self.peer.fetch_config()
 
-        if self.peer.is_down and ignore_peer_down:
+        config = Config.get_local_instance()
+        if self.peer.is_down and config.ignore_peers_down:
             if verbose:
                 print(f"Ignore peer {self.peer.name}: is down")
             return 1, 1
@@ -33,8 +34,7 @@ class RepositoryPeer(Node):
 
         success = 1
         for child in self.children:
-            child_success, child_total = child.sync(
-                verbose=verbose, ignore_peer_down=ignore_peer_down)
+            child_success, child_total = child.sync(verbose=verbose)
             if child_success == 0:
                 success = 0
         return success, 1

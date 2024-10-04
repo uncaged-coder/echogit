@@ -110,7 +110,7 @@ class SyncBranch(Node):
     def nb_children(self):
         return len(self.children)
 
-    def sync(self, verbose=False, ignore_peer_down=False):
+    def sync(self, verbose=False):
         self._add_remote(verbose)
         self._fetch()
         self._push(verbose)

@@ -124,8 +124,6 @@ class Node:
     def get_errors(self):
         errors = {}
         for child in self.children:
-            if child.get_errors() is None:
-                breakpoint()
             for key, value in child.get_errors().items():
                 if value != 0:
                     errors[key] = value

@@ -41,12 +41,12 @@ class SyncFolder(Node):
                     continue
                 self.add_child(child)
 
-    def sync(self, verbose=False, ignore_peer_down=False):
+    def sync(self, verbose=False):
         success, total = 0, 0
         # for child_success, child_total in (child.sync(verbose=verbose) for child in self.children):
         for child in self.children:
             child_success, child_total = child.sync(
-                verbose=verbose, ignore_peer_down=ignore_peer_down)
+                verbose=verbose)
             success += child_success
             total += child_total
         return success, total

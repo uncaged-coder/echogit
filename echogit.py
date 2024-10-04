@@ -17,8 +17,6 @@ def main():
     sync_parser = subparsers.add_parser("sync", help="Synchronize projects")
     sync_parser.add_argument("folder", nargs="?", default=None,
                              help="Folder to sync")
-    sync_parser.add_argument("-i", "--ignore-peer-down", action="store_true",
-                             help="Ignore if peer is down")
     sync_parser.add_argument("-v", "--verbose", action="store_true",
                              help="Verbose output")
     sync_parser.add_argument("-p", "--peer", default=None,
@@ -31,7 +29,11 @@ def main():
                               help="Specify a peer to clone from")
 
     # config command
-    subparsers.add_parser("config", help="Show configuration")
+    config_parser = subparsers.add_parser("config", help="Show configuration")
+    config_parser.add_argument(
+        "-g", "--get", action="store_true", help="Get the configuration")
+    config_parser.add_argument(
+        "-s", "--set", nargs="?", default=None, help="Set configuration values in the format 'ignore_peers_down:true,projects_path:/tmp/toto/'")
 
     # list command
     list_parser = subparsers.add_parser("list", help="List projects")
@@ -48,10 +50,10 @@ def main():
     subparsers.add_parser("tui", help="Launch TUI interface")
 
     # version command
-    list_parser = subparsers.add_parser("version", help="Print version")
-    list_parser.add_argument("-p", "--peer", default=None,
+    version_parser = subparsers.add_parser("version", help="Print version")
+    version_parser.add_argument("-p", "--peer", default=None,
                              help="Specify a peer for remote listing")
-    list_parser.add_argument(
+    version_parser.add_argument(
         "-c", "--cached", action="store_true", help="Use cached data")
 
     # peers command
@@ -63,13 +65,13 @@ def main():
     args = parser.parse_args()
 
     if args.command == "config":
-        handle_config_command()
+        handle_config_command(args)
     elif args.command == "version":
         handle_version_command(args.peer, args.cached)
     elif args.command == "sync":
         config = Config.get_local_instance()
         folder = args.folder or config.projects_path
-        handle_sync_command(folder, args.verbose, args.ignore_peer_down)
+        handle_sync_command(folder, args.verbose)
     elif args.command == "clone":
         folder = args.folder
         handle_clone_command(folder, args.peer)
@@ -97,10 +99,59 @@ def print_usage():
     print("  version        - Print version")
 
 
-def handle_config_command():
+def _parse_set_string(set_string):
+    """
+    Parse the input string in the format 'ignore_peers_down:true,projects_path:/tmp/toto/'
+    into a dictionary.
+    """
+    config_updates = {}
+
+    if not set_string:
+        return config_updates
+
+    pairs = set_string.split(",")
+    for pair in pairs:
+        key, value = pair.split(":")
+        key = key.strip()
+        value = value.strip()
+
+        # Convert "true"/"false" to boolean for ignore_peers_down
+        if key == "ignore_peers_down":
+            if value.lower() in ['true', 'yes', '1']:
+                config_updates[key] = True
+            elif value.lower() in ['false', 'no', '0']:
+                config_updates[key] = False
+            else:
+                raise ValueError(f"Invalid value for {key}: {value}")
+        else:
+            config_updates[key] = value
+
+    return config_updates
+
+
+def handle_config_command(args):
     config = Config.get_local_instance()
-    print(f"Data Path: {config.projects_path}")
-    print(f"Git Path: {config.git_path}")
+    if args.set:
+        # Parse the set string
+        config_updates = _parse_set_string(args.set)
+
+        # Update the config in the [DEFAULT] section
+        if 'projects_path' in config_updates:
+            config.config.set('DEFAULT', 'projects_path', config_updates['projects_path'])
+            config.projects_path = config_updates['projects_path']
+        if 'ignore_peers_down' in config_updates:
+            config.config.set('DEFAULT', 'ignore_peers_down', str(config_updates['ignore_peers_down']))
+            config.ignore_peers_down = config_updates['ignore_peers_down']
+
+        # Save the updated config if needed
+        config.save_to_file()
+
+    # If `--get` was used or `--set` was not provided
+    if args.get or not args.set:
+        # Display current config
+        print(f"Data Path: {config.projects_path}")
+        print(f"Git Path: {config.git_path}")  # Git path is not settable
+        print(f"Ignore peers down: {config.ignore_peers_down}")
 
 
 def handle_version_command(peer_str, cached):
@@ -122,11 +173,10 @@ def _get_root_node(folder):
     return node
 
 
-def handle_sync_command(folder, verbose, ignore_peer_down):
+def handle_sync_command(folder, verbose):
     node = _get_root_node(folder)
     print(f"Syncing {node.name}...")
-    success, total = node.sync(
-        verbose=verbose, ignore_peer_down=ignore_peer_down)
+    success, total = node.sync(verbose=verbose)
     print(f"done on {success}/{total}...")
 
 
@@ -151,6 +201,7 @@ def _clone_project(folder, peers):
             print(f"Failed to clone from peer {peer.name}: {e.stderr}")
 
     return False
+
 
 def handle_clone_command(folder, peer):
     config = Config.get_local_instance()

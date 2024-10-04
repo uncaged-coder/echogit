@@ -21,12 +21,11 @@ class GitProject(Node):
             repo.scan()
             self.add_child(repo)
 
-    def sync(self, verbose=False, ignore_peer_down=False):
+    def sync(self, verbose=False):
         success, total = 0, 0
 
         for child in self.children:
-            child_success, child_total = child.sync(
-                verbose=verbose, ignore_peer_down=ignore_peer_down)
+            child_success, child_total = child.sync(verbose=verbose)
             success += child_success
             total += child_total
 
