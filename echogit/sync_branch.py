@@ -85,13 +85,14 @@ class SyncBranch(Node):
     def _fetch(self):
         subprocess.run(["git", "fetch", self.peer.name], cwd=self.path)
 
-    def _status(self, verbose):
+    def _status(self, verbose=False):
         result = subprocess.run(["git", "status", "--porcelain"],
                                 cwd=self.path, text=True, capture_output=True)
         self._save_result_logs("status", result, verbose)
         if (result.returncode == 0) and (bool(result.stdout)):
             result.returncode = 10  # FIXME
         self._save_result_logs("status", result, verbose)
+        return result.returncode
 
     def get_logs(self):
         _str = f"branch={self.name}\n"
@@ -110,9 +111,18 @@ class SyncBranch(Node):
     def nb_children(self):
         return len(self.children)
 
+    def _commit(self):
+        print("******* commit *****")
+        result = subprocess.run(["git", "add", "-A", "."],
+                                cwd=self.path, text=True, capture_output=True)
+        result = subprocess.run(["git", "commit", "-m", "echogit auto commit"],
+                                cwd=self.path, text=True, capture_output=True)
+
     def sync(self, verbose=False):
         self._add_remote(verbose)
         self._fetch()
+        if self.node_config.auto_commit and self._status() != 0:
+            self._commit()
         self._push(verbose)
         self._pull(verbose)
         self._status(verbose)
