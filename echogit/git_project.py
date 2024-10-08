@@ -35,7 +35,7 @@ class GitProject(Node):
         print(f"{self.name}: {success}/{total}")
 
         # Success is 1 if all children succeeded, otherwise 0
-        return int(success == total and total > 0), total
+        return int(success == total and total > 0), 1
 
 
 if __name__ == "__main__":

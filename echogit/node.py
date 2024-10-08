@@ -123,7 +123,8 @@ class Node:
         if errors:
             return ",".join(key_flag[key] for key in errors if key in key_flag)
 
-        return ""
+        self.collapse = True
+        return "OK"
 
     def get_errors(self):
         errors = {}
