@@ -118,7 +118,30 @@ class SyncBranch(Node):
         result = subprocess.run(["git", "commit", "-m", "echogit auto commit"],
                                 cwd=self.path, text=True, capture_output=True)
 
+    def _branch(self):
+        result = subprocess.run(["git", "branch"], cwd=self.path, text=True,
+                                capture_output=True)
+
+    def _branch(self):
+        result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                                cwd=self.path, text=True, capture_output=True)
+
+        if result.returncode == 0:
+            return result.stdout.strip()  # Current branch name
+        else:
+            raise Exception(f"Error getting branch: {result.stderr}")
+
+
+    def _checkout(self, branch):
+        current_branch = self._branch()
+        if current_branch == branch:
+            return current_branch
+        subprocess.run(["git", "checkout", branch], cwd=self.path)
+        return current_branch
+
+
     def sync(self, verbose=False):
+        current_branch = self._checkout(self.name)
         self._add_remote(verbose)
         self._fetch()
         if self.node_config.auto_commit and self._status() != 0:
@@ -128,6 +151,9 @@ class SyncBranch(Node):
         self._status(verbose)
         self.cache.cache_status(self.errors, self.stderr,
                                 self.stdout, self.peer.is_down)
+
+        # restore branch
+        self._checkout(current_branch)
         if self.peer.is_down or self.has_error():
             success = 0
         else:
