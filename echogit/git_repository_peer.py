@@ -5,7 +5,7 @@ import argparse
 from echogit.node import Node
 
 
-class RepositoryPeer(Node):
+class GitRepositoryPeer(Node):
     def __init__(self, *, path, peer, config=None, parent=None):
         super().__init__(peer.name, path=path, parent=parent, config=config)
         self.peer = peer
