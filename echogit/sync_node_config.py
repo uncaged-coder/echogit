@@ -27,6 +27,7 @@ class SyncNodeConfig(BaseConfig):
         if not os.path.exists(config_file):
             return SyncNodeConfig.SYNC_TYPE_UNKNOWN
         config = configparser.ConfigParser()
+        config.read(config_file)
         return config.get("ECHOGIT", "sync_type", fallback=SyncNodeConfig.SYNC_TYPE_UNKNOWN)
 
     @staticmethod
