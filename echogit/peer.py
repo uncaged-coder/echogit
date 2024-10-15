@@ -1,10 +1,10 @@
-import sys
 import ast
-import os
 import json
-import subprocess
+import os
+import re
 import socket
-from pathlib import Path
+import sys
+import subprocess
 from echogit.config import Config
 from echogit.version import Version
 
@@ -147,6 +147,11 @@ class Peer:
         sync_type = self._determine_sync_type(project_base_path)
         if sync_type is None:
             raise ValueError(f"No .git or .rsync directory found for the project at {project_base_path}")
+
+        if sync_type == "rsync":
+            # rsync don't understand url when started with ssh://
+            project_base_path = re.sub("^ssh://", "", project_base_path)
+
 
         return f"{project_base_path}.{sync_type}"
 

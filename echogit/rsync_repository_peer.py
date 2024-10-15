@@ -1,10 +1,5 @@
-import os
 import subprocess
-import hashlib
-import json
-import shutil
 from echogit.config import Config
-from echogit.peer import Peer
 from echogit.node import Node
 
 
@@ -18,7 +13,7 @@ class RsyncRepositoryPeer(Node):
         """
         Perform a bidirectional sync between self.path and rsync_path
         """
-        rsync_options = ['-aur']  # Exclude -v by default
+        rsync_options = ['-aur']
         rsync_path = self.peer.get_remote_project_url(self.path)
 
         # Add verbose flag if requested
