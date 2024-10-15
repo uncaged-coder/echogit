@@ -271,9 +271,17 @@ class Peer:
             result = subprocess.run(
                 ssh_command, capture_output=True, text=True, check=True)
             return result.stdout
-        except subprocess.CalledProcessError as e:
+
+        except OSError as e:
+            # Handle network-related errors like unreachable host, DNS issues, etc.
             host = self.host
             self.is_down = True
+            print(f"Network error: Peer {host} is unreachable: {e}", file=sys.stderr)
+            return None
+
+        except subprocess.CalledProcessError as e:
+            # Handle other errors (command executed but failed)
+            host = self.host
             print(f"Error executing remote command '{command}' on {host}: {e}", file=sys.stderr)
             return None
 
